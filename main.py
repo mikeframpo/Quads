@@ -7,12 +7,12 @@ MODE_RECTANGLE = 1
 MODE_ELLIPSE = 2
 MODE_ROUNDED_RECTANGLE = 3
 
-MODE = MODE_RECTANGLE
+MODE = MODE_ELLIPSE
 ITERATIONS = 1024
 LEAF_SIZE = 4
 PADDING = 1
 FILL_COLOR = (0, 0, 0)
-SAVE_FRAMES = False
+SAVE_FRAMES = True
 ERROR_RATE = 0.5
 AREA_POWER = 0.25
 OUTPUT_SCALE = 1
@@ -104,7 +104,7 @@ class Model(object):
         for child in children:
             self.push(child)
             self.error_sum += child.error * child.area
-    def render(self, path, max_depth=None):
+    def render(self, path=None, max_depth=None):
         m = OUTPUT_SCALE
         dx, dy = (PADDING, PADDING)
         im = Image.new('RGB', (self.width * m + dx, self.height * m + dy))
@@ -121,7 +121,9 @@ class Model(object):
             else:
                 draw.rectangle(box, quad.color)
         del draw
-        im.save(path, 'PNG')
+        if path is not None:
+            im.save(path, 'PNG')
+        return im
 
 def main():
     args = sys.argv[1:]
