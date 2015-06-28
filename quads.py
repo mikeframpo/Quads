@@ -2,17 +2,22 @@ from PIL import Image, ImageDraw
 from collections import Counter
 import heapq
 import sys
+import random
 
 MODE_RECTANGLE = 1
 MODE_ELLIPSE = 2
 MODE_ROUNDED_RECTANGLE = 3
 
-MODE = MODE_ELLIPSE
-ITERATIONS = 1024
+COLORMODE_NONE = 1
+COLORMODE_RANDOM = 2
+
+MODE = MODE_RECTANGLE
+ITERATIONS = 3500
 LEAF_SIZE = 4
 PADDING = 1
 FILL_COLOR = (0, 0, 0)
-SAVE_FRAMES = True
+SAVE_FRAMES = False
+COLORMODE = COLORMODE_RANDOM
 ERROR_RATE = 0.5
 AREA_POWER = 0.25
 OUTPUT_SCALE = 1
@@ -87,6 +92,7 @@ class Model(object):
         self.root = Quad(self, (0, 0, self.width, self.height), 0)
         self.error_sum = self.root.error * self.root.area
         self.push(self.root)
+        self.bg_colour = FILL_COLOR
     @property
     def quads(self):
         return [x[-1] for x in self.heap]
@@ -104,22 +110,35 @@ class Model(object):
         for child in children:
             self.push(child)
             self.error_sum += child.error * child.area
+    def get_colour(self, colour):
+        if COLORMODE == COLORMODE_NONE:
+            return colour
+        elif COLORMODE == COLORMODE_RANDOM:
+            randcolour = [random.randint(0,255) for i in range(3)]
+            if sum(colour) == 0:
+                factor = 0
+            else:
+                factor = float(sum(randcolour))/sum(colour) * 0.5
+                if factor == 0:
+                    factor = 1
+            return tuple([int(i/factor) for i in randcolour])
     def render(self, path=None, max_depth=None):
         m = OUTPUT_SCALE
         dx, dy = (PADDING, PADDING)
         im = Image.new('RGB', (self.width * m + dx, self.height * m + dy))
         draw = ImageDraw.Draw(im)
-        draw.rectangle((0, 0, self.width * m, self.height * m), FILL_COLOR)
+        draw.rectangle((0, 0, self.width * m, self.height * m), self.bg_colour)
         for quad in self.root.get_leaf_nodes(max_depth):
             l, t, r, b = quad.box
-            box = (l * m + dx, t * m + dy, r * m - 1, b * m - 1)
+            box = (l * m + dx, t * m + dy, r * m , b * m )
+            colour = self.get_colour(quad.color)
             if MODE == MODE_ELLIPSE:
-                draw.ellipse(box, quad.color)
+                draw.ellipse(box, colour)
             elif MODE == MODE_ROUNDED_RECTANGLE:
                 radius = m * min((r - l), (b - t)) / 4
-                rounded_rectangle(draw, box, radius, quad.color)
+                rounded_rectangle(draw, box, radius, colour)
             else:
-                draw.rectangle(box, quad.color)
+                draw.rectangle(box, colour)
         del draw
         if path is not None:
             im.save(path, 'PNG')
